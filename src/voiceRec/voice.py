@@ -1,16 +1,48 @@
 ##-------------Código Principal---------
+##Bibliotecas gerais
+from datetime import datetime
+import constantes
 
-##Bibliotecas necessárias
+##Bibliotecas STT
 from vosk import Model, KaldiRecognizer
 import pyaudio
 import json
-import constantes
+
+##Bibliotecas TTS
+from piper import PiperVoice
+import sounddevice as sd
+import numpy as np
+import pyttsx3
+import wave
+
+#Toca um arquivo wav (duh)
+def tocar_wav(caminho):
+    with wave.open(caminho, "rb") as wf:
+        sample_rate = wf.getframerate()
+        n_channels = wf.getnchannels()
+        audio = wf.readframes(wf.getnframes())
+        audio_np = np.frombuffer(audio, dtype=np.int16)
+        if n_channels == 2:
+            audio_np = audio_np.reshape(-1, 2)
+        audio_np = audio_np.astype(np.float32) / 32768.0
+        sd.play(audio_np, sample_rate)
+        sd.wait()
+
+#Função auxiliar para resposta dos comandos
+def falar(texto, arquivo="resposta.wav", printTXT=True):
+    if(printTXT):
+        print(f"Bulbatech do Mal: {texto}")
+    with wave.open(arquivo, "wb") as wav_file:
+        jeff_voice.synthesize_wav(texto, wav_file)
+    tocar_wav(arquivo)
 
 
-##Configurando modelo
-model = Model(constantes.MODEL_PATH)
+#=====Configuração de Voz=======
+#Configurando modelo de reconhecimento
+model = Model(constantes.RECOGNIZER_MODEL_PATH)
 recognizer = KaldiRecognizer(model, constantes.AUDIO_FREQUENCY)
-##Configurando o microfone
+
+#Configurando o microfone
 microphone = pyaudio.PyAudio()
 stream = microphone.open(
     format=pyaudio.paInt16,
@@ -20,24 +52,42 @@ stream = microphone.open(
     input_device_index=constantes.DEVICE_INDEX,
     frames_per_buffer=constantes.BUFFER_SIZE
     )
+
+#=====Configuração de Fala=======
+jeff_voice = PiperVoice.load(constantes.VOICE_MODEL_PATH, config_path=constantes.VOICE_CONFIG_PATH)
+print("Bulbatech do Mal: Olá, eu sou o Bulbatech! Como vão as coisas?")
+falar("Olá, eu sou o Bulbatek! Como vão as coisas?", printTXT=False)
+
+#=====Código Principal===========
 ##Inicia a escuta
 stream.start_stream()
-print("Ouvindo...")
+print("Estou te ouvindo...")
+
 ##Interpreta o áudio
 while True:
     data = stream.read(constantes.BUFFER_SIZE, exception_on_overflow=False)
+    
     if recognizer.AcceptWaveform(data):
         resultado = json.loads(recognizer.Result())
-        print("Você disse:", resultado["text"])
+        comando = resultado.get("text", "").strip().lower()
+        
+        print("Você disse:", comando)
+        ##if not comando:
+        ##    continue  #tratamento de silêncio/ruído
 
-##Teste de palavras reconhecidas
-# while True:
-#     data = stream.read(constantes.BUFFER_SIZE, exception_on_overflow=False)
+        if "clima" in comando:
+            falar("Hoje tá muito, muito quente!")
+        elif "sabedoria" in comando:
+            falar("Nunca deixe de ser mau por causa das pessoas boas")
+        elif "hora" in comando:
+            agora = datetime.now()
+            texto_hora = agora.strftime("Agora são %H horas e %M minutos.")
+            falar(texto_hora)
+        elif "desligar" in comando:
+            falar("Até mais, amigo")
+            break
 
-#     if recognizer.AcceptWaveform(data):
-#         resultado = json.loads(recognizer.Result())
-#         print("FRASE FINAL:", resultado["text"])
-
-#     else:
-#         parcial = json.loads(recognizer.PartialResult())
-#         print("PARCIAL:", parcial["partial"])
+#Fecha tudo :P
+stream.stop_stream()
+stream.close()
+microphone.terminate()
