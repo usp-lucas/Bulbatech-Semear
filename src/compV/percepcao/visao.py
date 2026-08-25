@@ -62,10 +62,10 @@ class PercepcaoVisual:
         """
         contornos,_ = cv.findContours(masc,cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
         if contornos:
-            cnt = max(contornos,key=cv.contourArea)
-            contornos_area = cv.contourArea(cnt)
+            cnt_maior_area = max(contornos,key=cv.contourArea)
+            contornos_area = cv.contourArea(cnt_maior_area)
 
-            M = cv.moments(cnt)
+            M = cv.moments(cnt_maior_area)
             cx,cy = 0,0
             if M["m00"] != 0:
                 cx = int(M["m10"] / M["m00"])
@@ -75,7 +75,7 @@ class PercepcaoVisual:
             forma_valida = True
 
             if alvo_cubico and emaior:
-                envoltoria = cv.convexHull(cnt)
+                envoltoria = cv.convexHull(cnt_maior_area)
                 area_envol = cv.contourArea(envoltoria)
 
                 if area_envol > 0:
@@ -87,7 +87,7 @@ class PercepcaoVisual:
                 else:
                     forma_valida = False
             alvo_confirmado = emaior and forma_valida
-            return {"centroide": (cx,cy), "area_cnt": contornos_area, "alvo_confirmado": alvo_confirmado}
+            return {"centroide": (cx,cy), "area_cnt": contornos_area, "alvo_confirmado": alvo_confirmado, "cnt_maior_area": cnt_maior_area}
         return {"centroide": (0,0), "area_cnt": 0.0, "alvo_confirmado": False}
     def canaliza_process(self, quadro, nome_alvo):
         """
@@ -106,16 +106,13 @@ class PercepcaoVisual:
             foiconfirmado = geom_info.get("alvo_confirmado")
             coords_cen = geom_info.get("centroide")
             if foiconfirmado:
-                red = (0,0,255)
-                cv.circle(quadro_pre_proces, coords_cen,5,red,-1)
-
+                VERMELHO = (0,0,255)
+                cv.circle(quadro_pre_proces, coords_cen,5,VERMELHO,-1)
                 # Desenha-se o contorno retangular envolvente ao alvo
-                contornos, _ = cv.findContours(masc, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-                if contornos:
-                    cnt = max(contornos, key=cv.contourArea)
-                    x, y, w, h = cv.boundingRect(cnt)
+                cnt_maior_area = geom_info.get("cnt_maior_area")
+                if cnt_maior_area:
+                    x, y, w, h = cv.boundingRect(cnt_maior_area)
                     cv.rectangle(quadro_pre_proces, (x, y), (x+w, y+h), (0, 255, 0), 2)
-
             quadro_mascarado = cv.bitwise_and(quadro_pre_proces, quadro_pre_proces, mask=masc)
             cv.imshow("Debug Mode: Pre Processed quadro", quadro_pre_proces)
             cv.imshow("Debug Mode: Quadro Mascarado", quadro_mascarado)
