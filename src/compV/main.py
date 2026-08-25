@@ -1,8 +1,8 @@
 import logging
 import cv2
 import sys
-from perception.aquisicao_img import VideoStream
-from perception.visao import PercepcaoVisual
+from percepcao.aquisicao_img import VideoStream
+from percepcao.visao import PercepcaoVisual
 
 
 def configurar_logging():
@@ -24,7 +24,7 @@ def main():
         # Parâmetros centralizados para facilitar ajustes futuros
         RESOLUCAO = (640, 480)
         FPS = 30
-        FONTE_CAMERA = 1  # 0 geralmente é a webcam integrada
+        FONTE_CAMERA = 0  # 0 geralmente é a webcam integrada
 
         stream = VideoStream(
             resolucao=RESOLUCAO,
@@ -67,6 +67,8 @@ def main():
             resultado = percepcao.canaliza_process(frame, ALVO_ATUAL)
 
             # --- LOG ESTRATÉGICO (rastreabilidade) ---
+            if "erro_pre_proces" in resultado:
+                return logger.warning("Erro no pre-processamento, verifique a conexão da câmera. Quadro ignorado.")
             if resultado.get("alvo_confirmado"):
                 coords = resultado["centroide"]
                 area = resultado["area_cnt"]

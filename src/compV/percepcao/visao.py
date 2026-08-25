@@ -6,41 +6,55 @@ import numpy as np
 import logging
 class PercepcaoVisual:
     def __init__(self, debug=False):
-        self.debug = debug 
-        self.colors_hsv = {
+        self.debug = debug
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.colors_hsv =  {
             "SOL": {
-                "upper": np.array([180, 255, 255], dtype=np.uint8),
-                "lower": np.array([13, 138, 88], dtype=np.uint8)
+                "lower": np.array([153, 141, 2], dtype=np.uint8),
+                "upper": np.array([224, 169, 60], dtype=np.uint8)
             },
             "NUVEM": {
-                "upper": np.array([180, 30, 255], dtype=np.uint8),
-                "lower": np.array([0, 0, 200], dtype=np.uint8)
+                "lower": np.array([17, 71, 136], dtype=np.uint8),
+                "upper": np.array([122, 143, 181], dtype=np.uint8)
             }
         }
         # Kernel para as operações morfológicas (formato elíptico é melhor para formas orgânicas)
         # cv.MORPH_RECT, para retângulos
-        self.kernel_morfologia = cv.getStructuringElement(cv.MORPH_RECT, (5, 5))
-        logging.info('[SUCCESS] Instanciamento de PercepcaoVisual')
+        self.kernel_morfologia = cv.getStructuringElement(cv.MORPH_RECT, (9, 9))
+        self.logger.info('[SUCCESS] Instanciamento de PercepcaoVisual')
     def pre_process(self, quadro, largura=320, altura=240):
         """
         Método que aplica processamento ao quadro bruto, retorna o novo quadro
         melhor otimizado.
         """
-        quadro_redimensionado = cv.resize(quadro, (largura,altura),cv.INTER_LINEAR)
-        return quadro_redimensionado
+        if quadro is None or quadro.size == 0:
+            self.logger.warning("Quadro invalido recebido do Pré-processamento. Retornando None.")
+            return None
+        try:
+            return cv.resize(quadro, (largura,altura),interpolation=cv.INTER_LINEAR)
+        except Exception as e:
+            self.logger.error(f"Falha ao redimensionar quadro: {e}", exc_info=True)
+            return None
     def cria_masc_cor(self, quadro_hsv, nome_alvo):
         """
         Método que consome um quadro em HSV e retorna uma máscara binária,
         conforme o nome alvo.
         """
-        target_upper = self.colors_hsv[nome_alvo].get("upper")
-        target_lower = self.colors_hsv[nome_alvo].get("lower")
-        masc = cv.inRange(quadro_hsv,target_lower,target_upper)
-        # Opening (remove ruído de fundo) e Closing (preenche buracos no alvo)
-        masc = cv.morphologyEx(masc, cv.MORPH_OPEN, self.kernel_morfologia)
-        masc = cv.morphologyEx(masc, cv.MORPH_CLOSE, self.kernel_morfologia)
-
-        return masc
+        if quadro_hsv is None:
+            return
+        if nome_alvo not in self.colors_hsv:
+            raise KeyError(f"Alvo '{nome_alvo}' não configurado no dicionário de cores.")
+        try:    
+            target_upper = self.colors_hsv[nome_alvo].get("upper")
+            target_lower = self.colors_hsv[nome_alvo].get("lower")
+            masc = cv.inRange(quadro_hsv,target_lower,target_upper)
+            # Opening (remove ruído de fundo) e Closing (preenche buracos no alvo)
+            masc = cv.morphologyEx(masc, cv.MORPH_OPEN, self.kernel_morfologia)
+            masc = cv.morphologyEx(masc, cv.MORPH_CLOSE, self.kernel_morfologia)
+            return masc
+        except Exception as e:
+            self.logger.error(f"Erro ao processar máscara de cor para {nome_alvo}: {e}")
+            return None
     def extrai_valores_geometricos(self, masc, alvo_cubico=True):
         """
         Método que calcula contornos, o centroide do contorno de maior area
@@ -80,7 +94,10 @@ class PercepcaoVisual:
         Método unificado que consome um quadro bruto, executa todas as etapas
         e retorna as coordenadas puras para a tomada de decisão do robô.
         """
+
         quadro_pre_proces = self.pre_process(quadro)
+        if quadro_pre_proces is None:
+            return {"alvo_encontrado": False, "erro_pre_proces": True}
         quadro_hsv = cv.cvtColor(quadro_pre_proces, cv.COLOR_BGR2HSV)
         masc = self.cria_masc_cor(quadro_hsv, nome_alvo)
         geom_info = self.extrai_valores_geometricos(masc, alvo_cubico=True)
