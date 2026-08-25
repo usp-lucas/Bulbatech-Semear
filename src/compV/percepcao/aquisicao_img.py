@@ -2,13 +2,15 @@
 Propósito único de obter os frames e melhorar o framerate
 Extremamente útil em hardware limitado
 """
+import threading
 from threading import Thread
 import cv2 as cv
 import time
+import logging
 
 class VideoStream:
     """Objeto de video"""
-    def __init__(self, resolucao=(1280,720), taxaquadros=30, NoteOuWebcam=1, src=0):
+    def __init__(self, resolucao=(1280,720), taxaquadros=30, NoteOuWebcam=1, src=0, API=200):
         """
         Args:
             resolucao (tuple): Define a tupla(W,H) da resolução da câmera,
@@ -19,42 +21,53 @@ class VideoStream:
             src (int): Indice do componente físico de captura,
             Default=0 
         """
-        self.NoteOuWebcam = NoteOuWebcam #Define a variável para o NoteOrWebcam
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.NoteOuWebcam = NoteOuWebcam 
+        self.taxaquadros = taxaquadros
+        self.resolucao = resolucao
 
-        if self.NoteOuWebcam in (1,2):
-            self.stream = cv.VideoCapture(src)
-            # parâmetros físicos da câmera, width(largura) e height(altura) ambos int.
+        
+        self.stream = cv.VideoCapture(src, apiPreference=200)
+        
+        if isinstance(resolucao, (tuple, list)) and len(resolucao) >= 2:
+            
             self.stream.set(cv.CAP_PROP_FRAME_WIDTH, resolucao[0])
             self.stream.set(cv.CAP_PROP_FRAME_HEIGHT, resolucao[1])
-            self.stream.set(cv.CAP_PROP_FPS, taxaquadros)
-            # Tenta desativar autoexposição e correção de branco (da câmera)
-            self.stream.set(cv.CAP_PROP_AUTO_EXPOSURE, 0.25) 
-            self.stream.set(cv.CAP_PROP_AUTO_WB, 0)
-            # lê o primeiro frame
-            (self.grabbed, self.frame) = self.stream.read()
+        else:
+            self.logger.warning("Formato de resolução inválido. Usando padrão de hardware.")
+            
+        self.stream.set(cv.CAP_PROP_FPS, taxaquadros)
+        (self.grabbed, self.frame) = self.stream.read()
         self.stopped = False
-        """bool: Variable to control when camera is stopped"""
+        """bool: Variavel para controlar se a câmera parou"""
+        self.lock = threading.Lock()
+        self.logger.info("Módulo VideoStream inicializado")
     def comeca(self):
         """
         Inicia as thread para a leitura de frames
         """
-        Thread(target=self.atualizacao,args=(),daemon=True).start()
+        t = Thread(target=self.atualizacao,name="VideoStreamThread",daemon=True) 
+        t.start()
+        self.logger.info("Thread de aquisição de vídeo iniciada com sucesso.")
         return self
     def atualizacao(self):
-        if self.NoteOuWebcam in (1,2):
-            # loop indefinitivo até a thread parar
-            while True:
-                #Mutuamente para a thread, se a camera tambem parar
-                if self.stopped:
-                    self.stream.release()
-                    return
-                # Caso contrário, adquiri o próximo frame
-                (self.grabbed, self.frame)=self.stream.read()
-                # importante dar um tempinho pro processamento hehe
-                time.sleep(0.001)
+        while not self.stopped:
+            (grabbed, frame) = self.stream.read()
+            if not grabbed:
+                self.logger.error("Falha física de comunicação com o sensor da câmera. Interrompendo captura.")
+                self.pare()
+                break
+                
+            # Escrita segura protegida por Mutex Lock
+            with self.lock:
+                self.frame = frame
     def leia(self):
-        # Retorna o frame mais atualizado
-        return self.frame
+        # Leitura segura protegida por Mutex Lock
+        with self.lock:
+            # Evita sobrescrever os pixels
+            return self.frame.copy() if self.frame is not None else None
+
     def pare(self):
-        # Indica que a camera e o thread pararam
         self.stopped = True
+        self.stream.release()
+        self.logger.info("Recursos de captura de vídeo liberados de forma segura.")
