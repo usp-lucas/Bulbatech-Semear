@@ -13,12 +13,9 @@ import json
 from piper import PiperVoice
 import sounddevice as sd
 import numpy as np
-import pyttsx3
 import wave
 
 ##Bibliotecas de vitalidade
-#from just_playback import Playback
-#import miniaudio
 from pydub import AudioSegment
 
 #Toca um arquivo wav (duh)
