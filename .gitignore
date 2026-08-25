@@ -1,5 +1,6 @@
 /vosk-model-small-pt-0.3
 /voiceModel
+/voiceFiles
 /src/voiceRec/constantes.py
 /src/voiceRec/__pycache__
 /env

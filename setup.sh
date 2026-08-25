@@ -10,5 +10,8 @@ pip install pyaudio
 pip install vosk
 pip install sounddevice numpy
 pip install piper-tts
+pip install miniaudio
+pip install just-playback
+pip install pydub
 #pip install pyaudio vosk
 #pip install sounddevice numpy piper-tts

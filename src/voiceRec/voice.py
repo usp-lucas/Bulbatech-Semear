@@ -2,6 +2,7 @@
 ##Bibliotecas gerais
 from datetime import datetime
 import constantes
+import random
 
 ##Bibliotecas STT
 from vosk import Model, KaldiRecognizer
@@ -14,6 +15,11 @@ import sounddevice as sd
 import numpy as np
 import pyttsx3
 import wave
+
+##Bibliotecas de vitalidade
+#from just_playback import Playback
+#import miniaudio
+from pydub import AudioSegment
 
 #Toca um arquivo wav (duh)
 def tocar_wav(caminho):
@@ -36,11 +42,32 @@ def falar(texto, arquivo="resposta.wav", printTXT=True):
         jeff_voice.synthesize_wav(texto, wav_file)
     tocar_wav(arquivo)
 
+def gritinho():
+    try:
+        ##Inicialização
+        num = random.randint(0,4)#Gera um número aleatório para escolher o audio
+        arquivo_aleatorio = f"{constantes.BULBASAUR_VIT_AUDIO_PATH}{num}.mp3"
+        audio = AudioSegment.from_mp3(arquivo_aleatorio)
+        data_audio = np.array(audio.get_array_of_samples(), dtype=np.float32)
+        #Normalização de audio
+        if audio.sample_width == 2:
+            data_audio /= 32768.0
+        elif audio.sample_width == 1:
+            data_audio = (data_audio - 128.0) / 128.0
+        if audio.channels == 2:
+            data_audio = data_audio.reshape((-1,2))
 
-#=====Configuração de Voz=======
+        #Toca o áudio
+        sd.play(data_audio, audio.frame_rate)
+    except Exception as e:
+        print(f"Erro ao dar gritinho: {e}")
+
+#=====Configuração de Voz e Vitalidade=======
 #Configurando modelo de reconhecimento
 model = Model(constantes.RECOGNIZER_MODEL_PATH)
-recognizer = KaldiRecognizer(model, constantes.AUDIO_FREQUENCY)
+vocabulary = json.dumps(constantes.AUDIO_VOCABULARY)
+recognizer = KaldiRecognizer(model, constantes.AUDIO_FREQUENCY, vocabulary)
+gritinho()
 
 #Configurando o microfone
 microphone = pyaudio.PyAudio()
@@ -64,7 +91,13 @@ stream.start_stream()
 print("Estou te ouvindo...")
 
 ##Interpreta o áudio
+timer = 0
 while True:
+    if timer >200:
+        gritinho()
+        timer = 0
+
+    timer+=1
     data = stream.read(constantes.BUFFER_SIZE, exception_on_overflow=False)
     
     if recognizer.AcceptWaveform(data):
@@ -77,9 +110,11 @@ while True:
 
         if "clima" in comando:
             falar("Hoje tá muito, muito quente!")
+        if "bom dia" in comando:
+            falar("Bom dia! O Tibas tá por aí?")
         elif "sabedoria" in comando:
             falar("Nunca deixe de ser mau por causa das pessoas boas")
-        elif "hora" in comando:
+        elif "horas" in comando:
             agora = datetime.now()
             texto_hora = agora.strftime("Agora são %H horas e %M minutos.")
             falar(texto_hora)
