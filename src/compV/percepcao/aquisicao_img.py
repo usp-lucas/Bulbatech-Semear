@@ -39,7 +39,7 @@ class FluxoVideo:
         self.fluxo.set(cv.CAP_PROP_AUTO_EXPOSURE, 0.25)
         self.fluxo.set(cv.CAP_PROP_AUTO_WB, 0)
 
-        (self.grabbed, self.frame) = self.fluxo.read()
+        (self.capturado, self.quadro) = self.fluxo.read()
         self.stopped = False
         """bool: Variavel para controlar se a câmera parou"""
         self.lock = Lock()
@@ -55,18 +55,18 @@ class FluxoVideo:
         return self
     def atualizacao(self):
         while not self.stopped:
-            (capturado, frame) = self.fluxo.read()
+            (capturado, quadro) = self.fluxo.read()
             if not capturado:
                 self.logger.error("Falha física de comunicação com o sensor da câmera. Interrompendo captura.")
                 self.pare()
                 break
 
             with self.lock:
-                self.frame = frame
+                self.quadro = quadro
     def leia(self):
         with self.lock:
             # Evita sobrescrever os pixels
-            return self.frame.copy() if self.frame is not None else None
+            return self.quadro.copy() if self.quadro is not None else None
 
     def pare(self):
         self.stopped = True
