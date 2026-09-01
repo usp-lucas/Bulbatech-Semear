@@ -45,9 +45,9 @@ class PercepcaoVisual:
         if nome_alvo not in self.colors_hsv:
             raise KeyError(f"Alvo '{nome_alvo}' não configurado no dicionário de cores.")
         try:    
-            target_upper = self.colors_hsv[nome_alvo].get("upper")
-            target_lower = self.colors_hsv[nome_alvo].get("lower")
-            masc = cv.inRange(quadro_hsv,target_lower,target_upper)
+            valor_alvo_sup = self.colors_hsv[nome_alvo].get("upper")
+            valor_alvo_inf = self.colors_hsv[nome_alvo].get("lower")
+            masc = cv.inRange(quadro_hsv,valor_alvo_inf,valor_alvo_sup)
             # Opening (remove ruído de fundo) e Closing (preenche buracos no alvo)
             masc = cv.morphologyEx(masc, cv.MORPH_OPEN, self.kernel_morfologia)
             masc = cv.morphologyEx(masc, cv.MORPH_CLOSE, self.kernel_morfologia)
@@ -107,13 +107,14 @@ class PercepcaoVisual:
             coords_cen = geom_info.get("centroide")
             if foiconfirmado:
                 VERMELHO = (0,0,255)
-                cv.circle(quadro_pre_proces, coords_cen,5,VERMELHO,-1)
+                cv.circle(quadro_hsv, coords_cen,5,VERMELHO,-1)
                 # Desenha-se o contorno retangular envolvente ao alvo
                 cnt_maior_area = geom_info.get("cnt_maior_area")
                 if cnt_maior_area:
                     x, y, w, h = cv.boundingRect(cnt_maior_area)
-                    cv.rectangle(quadro_pre_proces, (x, y), (x+w, y+h), (0, 255, 0), 2)
-            quadro_mascarado = cv.bitwise_and(quadro_pre_proces, quadro_pre_proces, mask=masc)
+                    cv.rectangle(quadro_hsv, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            quadro_mascarado = cv.bitwise_and(quadro_hsv, quadro_hsv, mask=masc)
             cv.imshow("Debug Mode: Pre Processed quadro", quadro_pre_proces)
+            cv.imshow("Debug Mode: Quadro HSV", quadro_hsv)
             cv.imshow("Debug Mode: Quadro Mascarado", quadro_mascarado)
         return geom_info
