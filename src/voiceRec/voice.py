@@ -62,8 +62,9 @@ def gritinho():
 #=====Configuração de Voz e Vitalidade=======
 #Configurando modelo de reconhecimento
 model = Model(constantes.RECOGNIZER_MODEL_PATH)
-vocabulary = json.dumps(constantes.AUDIO_VOCABULARY)
-recognizer = KaldiRecognizer(model, constantes.AUDIO_FREQUENCY, vocabulary)
+#vocabulary = json.dumps(constantes.AUDIO_VOCABULARY)
+#recognizer = KaldiRecognizer(model, constantes.AUDIO_FREQUENCY, vocabulary)
+recognizer = KaldiRecognizer(model, constantes.AUDIO_FREQUENCY)
 gritinho()
 
 #Configurando o microfone
