@@ -4,3 +4,7 @@
 /src/voiceRec/__pycache__
 /env
 resposta.wav
+# Módulos e scripts de teste/estudo temporários
+src/compV/provisorio/
+*.tflite
+src/compV/percepcao/__pycache__
